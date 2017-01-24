@@ -18,19 +18,22 @@ using suresecureivs::DeviceMgt;
 
 class MyCustomAuthenticator : public grpc::MetadataCredentialsPlugin {
 public:
-  MyCustomAuthenticator(const grpc::string &ticket) : ticket_(ticket) {}
+  MyCustomAuthenticator(const grpc::string &username,
+                        const grpc::string &password)
+      : username_(username), password_(password) {}
 
   grpc::Status
   GetMetadata(grpc::string_ref service_url, grpc::string_ref method_name,
               const grpc::AuthContext &channel_auth_context,
               std::multimap<grpc::string, grpc::string> *metadata) override {
-    metadata->insert(std::make_pair("x-custom-auth-ticket", ticket_));
-    metadata->insert(std::make_pair("token", "mytoken"));
+    metadata->insert(std::make_pair("username", username_));
+    metadata->insert(std::make_pair("password", password_));
     return grpc::Status::OK;
   }
 
 private:
-  grpc::string ticket_;
+  grpc::string username_;
+  grpc::string password_;
 };
 
 class DeviceMgtClient {
@@ -50,7 +53,7 @@ public:
     // the server and/or tweak certain RPC behaviors.
     ClientContext context;
 
-    //context.AddMetadata("token", "mytoken");
+    // context.AddMetadata("token", "mytoken");
 
     // The actual RPC.
     Status status = stub_->GetHealthyStatus(&context, request, &reply);
@@ -59,7 +62,8 @@ public:
     if (status.ok()) {
       return reply.message();
     } else {
-      return "RPC failed";
+      return status.error_message();
+      //return "RPC failed";
     }
   }
 
@@ -88,7 +92,7 @@ int main(int argc, char **argv) {
 
   auto call_creds = grpc::MetadataCredentialsFromPlugin(
       std::unique_ptr<grpc::MetadataCredentialsPlugin>(
-          new MyCustomAuthenticator("super-secret-ticket")));
+          new MyCustomAuthenticator("useradmin", "1qaz@wsx")));
 
   auto com_creds = grpc::CompositeChannelCredentials(creds, call_creds);
 

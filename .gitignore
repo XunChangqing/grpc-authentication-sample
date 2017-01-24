@@ -8,6 +8,9 @@ server.csr
 server.key
 *.o
 *.grpc.pb.cc
+*.grpc.pb.h
 *.pb.cc
+*.pb.h
+*.swp
 event_client
 event_server

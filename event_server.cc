@@ -18,16 +18,8 @@ using suresecureivs::GeneralReply;
 using suresecureivs::DeviceMgt;
 using grpc::SslServerCredentialsOptions;
 
-struct Const {
-  static const std::string &TokenKeyName() {
-    static std::string _("token");
-    return _;
-  }
-  static const std::string &PeerIdentityPropertyName() {
-    static std::string _("username");
-    return _;
-  }
-};
+const std::string kUsername = "username";
+const std::string kPassword = "password";
 
 class MyServiceAuthProcessor : public grpc::AuthMetadataProcessor {
 
@@ -42,8 +34,8 @@ public:
     auto dispatch_kv = auth_metadata.find(dispatch_keyname);
     if (dispatch_kv == auth_metadata.end())
       return grpc::Status(grpc::StatusCode::INTERNAL, "Internal Error");
-    std::cout << dispatch_kv->first.data() << ": " << dispatch_kv->second.data()
-              << std::endl;
+    //std::cout << dispatch_kv->first.data() << ": " << dispatch_kv->second.data()
+              //<< std::endl;
 
     // if token metadata not necessary, return early, avoid token checking
     auto dispatch_value = std::string(dispatch_kv->second.data());
@@ -51,19 +43,22 @@ public:
       return grpc::Status::OK;
 
     // determine availability of token metadata
-    auto token_kv = auth_metadata.find(Const::TokenKeyName());
-    if (token_kv == auth_metadata.end())
-      return grpc::Status(grpc::StatusCode::UNAUTHENTICATED, "Missing Token");
+    auto username_kv = auth_metadata.find(kUsername);
+    auto password_kv = auth_metadata.find(kPassword);
+    if (username_kv == auth_metadata.end() || password_kv == auth_metadata.end())
+      return grpc::Status(grpc::StatusCode::UNAUTHENTICATED, "Missing username or password");
 
-    std::cout << "Token value: " << token_kv->second.data() << std::endl;
+    //std::cout << "Token value: " << token_kv->second.data() << std::endl;
 
     // determine validity of token metadata
-    auto token_value = std::string(token_kv->second.data());
+    auto username = std::string(username_kv->second.data());
+    auto password = std::string(password_kv->second.data());
     //if (tokens.count(token_value) == 0)
-    //if(usename and password are invalid)
-      //return grpc::Status(grpc::StatusCode::UNAUTHENTICATED, "Invalid Token");
+    if(username != username_ || password != password_)
+      return grpc::Status(grpc::StatusCode::UNAUTHENTICATED, "Invalid username and password");
 
-    std::cout << "Token value: " << token_value << std::endl;
+    //std::cout << "username: " << username << std::endl;
+    //std::cout << "password: " << password << std::endl;
 
     //// once verified, mark as consumed and store user for later retrieval
     // consumed_auth_metadata->insert(
@@ -75,6 +70,9 @@ public:
 
     return grpc::Status::OK;
   }
+private:
+  std::string username_ = "useradmin";
+  std::string password_ = "1qaz@wsx";
 
   //std::map<std::string, std::string> tokens;
 };
@@ -84,9 +82,9 @@ class DeviceMgtImpl final : public DeviceMgt::Service {
                           GeneralReply *reply) override {
     const std::multimap<grpc::string_ref, grpc::string_ref> &metadata_map =
         context->client_metadata();
-    for (auto s : metadata_map) {
-      std::cout << s.first << "\t" << s.second << std::endl;
-    }
+    //for (auto s : metadata_map) {
+      //std::cout << s.first << "\t" << s.second << std::endl;
+    //}
     reply->set_message("ok");
     return Status::OK;
   }
@@ -106,7 +104,7 @@ void RunServer() {
   //
   // auto channel_creds = grpc::SslCredentials(grpc::SslCredentialsOptions());
   auto cacert = ReadFile2String("ca.crt");
-  std::cout << "ca.crt: " << cacert << std::endl;
+  //std::cout << "ca.crt: " << cacert << std::endl;
   auto servercert = ReadFile2String("server.crt");
   auto serverkey = ReadFile2String("server.key");
   SslServerCredentialsOptions::PemKeyCertPair key_pair;
